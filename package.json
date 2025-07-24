@@ -1,0 +1,16 @@
+{
+  "name": "yacs",
+  "version": "0.0.1",
+  "description": "(Y)et (A)nother (C)ontent management (S)ystem",
+  "main": "index.js",
+  "author": "The yacs guy",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/pg": "^8.15.4",
+    "dotenv": "^17.2.0",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.3",
+    "pg": "^8.16.3",
+    "tsx": "^4.20.3"
+  }
+}
