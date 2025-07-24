@@ -1,0 +1,32 @@
+services:
+  yacs-db:
+    image: "postgis/postgis:latest"
+    container_name: yacs-db
+    restart: unless-stopped
+    tty: true
+    networks:
+      - yacs-net
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: $POSTGRES_DB
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - ./.db/data:/var/lib/postgresql/data/
+
+  pgadmin:
+    container_name: yacs-pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: $PGADMIN_DEFAULT_EMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PGADMIN_DEFAULT_PASSWORD
+    ports:
+      - "5050:80"
+    depends_on:
+      - yacs-db
+    networks:
+      - yacs-net
+
+networks:
+  yacs-net:
+    driver: bridge
