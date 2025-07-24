@@ -137,3 +137,21 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Local build files
+dist/
+
+# Local cache files
+.cache/
+
+# Local coverage files
+coverage/
+
+# Local build artifacts
+.db
