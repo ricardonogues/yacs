@@ -85,3 +85,57 @@ export interface YacsEntityDefinition {
   fields: YacsEntityConfig;
   relationships?: YacsEntityRelationships;
 }
+
+export enum YacsConstraintType {
+  FOREIGN_KEY = "FOREIGN KEY",
+  UNIQUE = "UNIQUE",
+  CHECK = "CHECK",
+  PRIMARY_KEY = "PRIMARY KEY",
+}
+
+export enum YacsRelationshipEvent {
+  BEFORE_CREATE = "beforeCreate",
+  AFTER_CREATE = "afterCreate",
+  BEFORE_UPDATE = "beforeUpdate",
+  AFTER_UPDATE = "afterUpdate",
+  BEFORE_DELETE = "beforeDelete",
+  AFTER_DELETE = "afterDelete",
+  BEFORE_ATTACH = "beforeAttach", // For M:N relationships
+  AFTER_ATTACH = "afterAttach",
+  BEFORE_DETACH = "beforeDetach",
+  AFTER_DETACH = "afterDetach",
+}
+
+export interface YacsConstraint {
+  name: string;
+  type: YacsConstraintType;
+  table: string;
+  columns: string[];
+  referencedTable?: string;
+  referencedColumns?: string[];
+  onDelete?: YacsCascadeAction;
+  onUpdate?: YacsCascadeAction;
+  condition?: string; // For CHECK constraints
+}
+
+export interface YacsRelationshipEventHandler {
+  event: YacsRelationshipEvent;
+  handler: (context: YacsEventContext) => Promise<void> | void;
+}
+
+export interface YacsEventContext {
+  entity: string;
+  relationship: string;
+  data: any;
+  relatedData?: any;
+  transaction?: any; // ORM-specific transaction object
+}
+
+export interface YacsQueryOptions {
+  select?: string[];
+  where?: Record<string, any>;
+  orderBy?: Record<string, "asc" | "desc">;
+  limit?: number;
+  offset?: number;
+  with?: string[]; // Eager loading relationships
+}

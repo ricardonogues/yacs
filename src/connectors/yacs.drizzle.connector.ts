@@ -72,7 +72,14 @@ export class YacsDrizzleConnector implements IYacsConnector {
       }
 
       if (fieldConfig.isNullableField) {
-        field = field.nullable();
+        // The text() function already creates a nullable column by default in PostgreSQL. If you try to call .nullable() on a text() field, you'll get the error field.nullable is not a function.
+        if (
+          fieldConfig.type !== YacsFieldType.TEXT &&
+          fieldConfig.type !== YacsFieldType.STRING &&
+          fieldConfig.type !== YacsFieldType.URL
+        ) {
+          // field = field.nullable();
+        }
 
         if (fieldConfig.defaultTypeValue !== undefined) {
           field = field.default(fieldConfig.defaultTypeValue);
