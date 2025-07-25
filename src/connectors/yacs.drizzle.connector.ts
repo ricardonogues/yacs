@@ -1,7 +1,4 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import { YacsConnectionOptions, IYacsConnector } from "./yacs.connector.interface";
-import { YacsEntityConfig, YacsFieldType } from "../types/yacs.types";
-import { YacsField } from "../fields/yacs.field";
 import {
   integer,
   varchar,
@@ -23,17 +20,21 @@ import {
   inet as drizzleInet,
   pgTable,
 } from "drizzle-orm/pg-core";
-import { YacsIntegerField } from "../fields/yacs.integer.field";
-import { YacsBigIntField } from "../fields/yacs.bigint.field";
-import { YacsDecimalField } from "../fields/yacs.decimal.field";
+
+import { YacsConnectionOptions, IYacsConnector } from "./yacs.connector.interface";
+import { YacsEntityConfig, YacsFieldType } from "../types/yacs.types";
+import { YacsField } from "../fields/yacs.field";
 import { YacsStringField } from "../fields/yacs.string.field";
 import { YacsDateField } from "../fields/yacs.date.field";
+import { YacsIntegerField } from "../fields/yacs.integer.field";
+import { YacsDecimalField } from "../fields/yacs.decimal.field";
 import { YacsTimeField } from "../fields/yacs.time.field";
 import { YacsGeometryField } from "../fields/yacs.geometry.field";
 import { YacsInetField } from "../fields/yacs.inet.field";
 import { YacsRangeField } from "../fields/yacs.range.field";
 import { YacsEnumField } from "../fields/yacs.enum.field";
 import { YacsArrayField } from "../fields/yacs.array.field";
+import { YacsBigIntField } from "../fields";
 
 export class YacsDrizzleConnector implements IYacsConnector {
   private static instance: YacsDrizzleConnector;
@@ -60,39 +61,38 @@ export class YacsDrizzleConnector implements IYacsConnector {
   }
 
   public buildEntity(entityName: string, entity: YacsEntityConfig): any {
-    console.log("Building entity with Drizzle ORM:", entity);
+    console.log("Building entity with Drizzle ORM:", entityName);
     const fields: Record<string, any> = {};
+
     Object.entries(entity).forEach(([fieldName, fieldConfig]) => {
-      let field: any;
+      let field = this.getFieldType(fieldConfig);
 
-      field = this.getFieldType(fieldConfig);
-
+      // Apply field modifiers in the correct order
+      // 1. Primary key
       if (fieldConfig.isPrimaryKeyField) {
         field = field.primaryKey();
       }
 
-      if (fieldConfig.isNullableField) {
-        // The text() function already creates a nullable column by default in PostgreSQL. If you try to call .nullable() on a text() field, you'll get the error field.nullable is not a function.
-        if (
-          fieldConfig.type !== YacsFieldType.TEXT &&
-          fieldConfig.type !== YacsFieldType.STRING &&
-          fieldConfig.type !== YacsFieldType.URL
-        ) {
-          // field = field.nullable();
-        }
-
-        if (fieldConfig.defaultTypeValue !== undefined) {
-          field = field.default(fieldConfig.defaultTypeValue);
-        }
-      } else if (fieldConfig.isUniqueField) {
+      // 2. Unique constraint
+      if (fieldConfig.isUniqueField) {
         field = field.unique();
       }
 
-      return {
-        ...fields,
-        [fieldName]: field,
-      };
+      // 3. Nullable/NotNull - FIXED: In Drizzle, fields are nullable by default
+      // Only add .notNull() if the field should NOT be nullable
+      if (!fieldConfig.isNullableField) {
+        field = field.notNull();
+      }
+      // If isNullableField is true, we don't need to do anything since Drizzle columns are nullable by default
+
+      // 4. Default value
+      if (fieldConfig.defaultTypeValue !== undefined) {
+        field = field.default(fieldConfig.defaultTypeValue);
+      }
+
+      fields[fieldName] = field;
     });
+
     return pgTable(entityName, fields);
   }
 
@@ -175,28 +175,29 @@ export class YacsDrizzleConnector implements IYacsConnector {
         return geometry();
 
       case YacsFieldType.INET:
-        const inetField = field as YacsInetField;
         return drizzleInet();
 
       case YacsFieldType.RANGE:
-        const rangeField = field as YacsRangeField;
-        // Note: Drizzle might not have native range support yet
-        // This would need custom implementation
-        return text(); // Fallback to text for now
+        // PostgreSQL ranges - Drizzle might not have native support yet
+        // For now, we'll use text as a fallback and handle serialization in the app
+        return text();
 
       case YacsFieldType.ENUM:
+        // For enums, we need to create the enum type first
+        // For now, we'll use varchar as a fallback
         const enumField = field as YacsEnumField;
-        // Note: Enum creation would need to be handled separately
-        return varchar({ length: 50 });
+        const maxLength = Math.max(...enumField.allowedValues.map((v) => v.length));
+        return varchar({ length: Math.max(maxLength, 50) });
 
       case YacsFieldType.ARRAY:
-        const arrayField = field as YacsArrayField;
-        // PostgreSQL arrays - would need proper array type implementation
-        return json(); // Fallback to JSON
+        // PostgreSQL arrays - for now we'll use JSON as a fallback
+        // In production, you might want to use proper array types
+        return json();
 
       case YacsFieldType.BINARY:
-        // PostgreSQL bytea - might need custom implementation
-        return text(); // Fallback for now
+        // PostgreSQL bytea - Drizzle might not have direct support
+        // Use text for now and handle binary encoding in the app
+        return text();
 
       default:
         throw new Error(`Unsupported field type: ${field.type}`);
